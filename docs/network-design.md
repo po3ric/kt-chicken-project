@@ -1,345 +1,344 @@
-# Accordion 프로젝트 — AWS 네트워크 설계서 (A1)
+# Accordion 프로젝트 AWS 네트워크 설계서
 
-## 1. 네트워크 설계 개요
+## 1. 프로젝트 개요
 
-### 프로젝트 정보
+### 1.1 프로젝트명
+Terraform 기반 Kubernetes 웹서비스 자동 확장 및 통합 모니터링 시스템 구축
 
-| 항목 | 내용 |
+### 1.2 네트워크 설계 목적
+
+본 프로젝트는 Terraform을 활용하여 AWS 네트워크 및 EC2 인프라를 자동 구축하고, Kubernetes 기반 웹서비스의 안정적인 운영 환경을 구성하는 것을 목표로 한다.
+
+웹서비스는 Kubernetes HPA(Horizontal Pod Autoscaler)를 이용하여 CPU 사용률에 따라 Pod 수를 자동으로 조절하며, Prometheus와 Grafana를 통해 시스템 상태를 모니터링한다.
+
+### 1.3 주요 사용 기술
+
+| 구분 | 기술 |
 |---|---|
-| 프로젝트명 | Accordion (아코디언) |
-| 프로젝트 주제 | Terraform 기반 AWS 인프라 자동 구축 및 Kubernetes 2단계 오토스케일링 |
-| 담당 | A1 — AWS 네트워크 설계 및 검증 |
 | 클라우드 | AWS |
-| 리전 | 서울 (`ap-northeast-2`) |
-| 운영체제 | Ubuntu Server 24.04 LTS (x86_64) |
-| IaC 도구 | Terraform |
+| 인프라 자동화 | Terraform |
+| 컨테이너 | Docker |
 | 컨테이너 오케스트레이션 | Kubernetes |
-
-### 네트워크 설계 목표
-
-- Terraform으로 AWS 네트워크 인프라를 자동 구축한다.
-- Master와 Worker를 서로 다른 가용 영역(AZ)에 배치한다.
-- Kubernetes 클러스터 내부 통신을 지원한다.
-- Security Group을 통해 필요한 포트만 허용한다.
-- Worker EC2가 Auto Scaling Group을 통해 추가되더라도 네트워크에 정상 연결되도록 설계한다.
+| 클러스터 구성 | kubeadm |
+| CNI | Calico |
+| 이미지 저장소 | Amazon ECR |
+| 자동 확장 | HPA |
+| 모니터링 | Prometheus, Grafana |
+| 부하 테스트 | k6 |
 
 ---
 
-## 2. VPC 및 Subnet 설계
+## 2. AWS 네트워크 구성
 
-### 2.1 VPC 구성
+### 2.1 VPC 설계
 
-| 항목 | 설정값 |
+| 항목 | 설정 |
 |---|---|
-| VPC 이름 | `accordion-vpc` |
-| VPC CIDR | `10.0.0.0/16` |
-| 리전 | `ap-northeast-2` |
+| VPC 이름 | accordion-vpc |
+| AWS 리전 | ap-northeast-2 (서울) |
+| VPC CIDR | 10.0.0.0/16 |
 | DNS Resolution | 활성화 |
 | DNS Hostnames | 활성화 |
 
-VPC는 프로젝트에서 사용하는 AWS 리소스들의 논리적으로 격리된 네트워크이다.
+VPC는 프로젝트에서 사용하는 AWS 리소스를 논리적으로 격리하며, Kubernetes 클러스터를 구성하는 Master와 Worker EC2 간 내부 통신을 지원한다.
 
-### 2.2 Public Subnet 구성
+### 2.2 Subnet 설계
 
-| 항목 | Public Subnet A | Public Subnet C |
-|---|---|---|
-| 서브넷 이름 | `accordion-public-a` | `accordion-public-c` |
-| 가용 영역 | `ap-northeast-2a` | `ap-northeast-2c` |
-| CIDR | `10.0.1.0/24` | `10.0.2.0/24` |
-| 유형 | Public | Public |
-| 주요 리소스 | Master EC2 | Worker EC2 (ASG) |
-| Public IPv4 자동 할당 | 활성화 | 활성화 |
+| Subnet | CIDR | 가용 영역 | 주요 리소스 |
+|---|---|---|---|
+| Public Subnet A | 10.0.1.0/24 | ap-northeast-2a | NAT Gateway |
+| Private Subnet A | 10.0.101.0/24 | ap-northeast-2a | Master EC2 |
+| Private Subnet C | 10.0.102.0/24 | ap-northeast-2c | Worker EC2 |
 
-**서브넷 명칭 규칙**
+Master와 Worker는 각각 Private Subnet에 배치하며, 공인 IP를 할당하지 않는다.
 
-- Subnet A → AZ `2a`
-- Subnet C → AZ `2c`
-- 문서와 구성도에서는 A, C로 통일한다.
-- Terraform의 AZ 설정에는 전체 이름인 `ap-northeast-2a`, `ap-northeast-2c`를 사용한다.
+이를 통해 외부 인터넷에서 EC2 인스턴스로 직접 접근하는 것을 제한한다.
 
 ### 2.3 네트워크 구성도
 
 ```text
-                       Internet
-                          |
-                          |
-                 Internet Gateway
-                   accordion-igw
-                          |
-                          |
-          VPC: accordion-vpc (10.0.0.0/16)
-                          |
-              accordion-public-rt
-                          |
-           +--------------+--------------+
-           |                             |
-      AZ: 2a                         AZ: 2c
-           |                             |
-    Public Subnet A               Public Subnet C
-     10.0.1.0/24                   10.0.2.0/24
-           |                             |
-       Master EC2                  Worker EC2
-    Ubuntu 24.04 LTS              Ubuntu 24.04 LTS
-           |                             |
-    Kubernetes API                  AWS ASG
-       TCP 6443                   min: 1 / max: 2
-           |                             |
-           +------ Kubernetes Cluster ---+
-                        |
-                 Calico Pod Network
-                   172.20.0.0/16
+                    Internet
+                       |
+                Internet Gateway
+                       |
+              VPC 10.0.0.0/16
+                       |
+              Public Subnet A
+                10.0.1.0/24
+                       |
+                  NAT Gateway
+                       |
+              Private Route Table
+                       |
+          +------------+------------+
+          |                         |
+   Private Subnet A          Private Subnet C
+    10.0.101.0/24             10.0.102.0/24
+      AZ: 2a                    AZ: 2c
+          |                         |
+      Master EC2                Worker EC2
+          |                         |
+          +------ Kubernetes -------+
+                       |
+                 Web Service
+                       |
+                 HPA (CPU 50%)
+                 Pod 1 ~ 3
+                       |
+              Prometheus/Grafana
 ```
 
-※ Master 및 Worker는 각각 Public IP를 사용한다. Kubernetes 내부 통신에는 사설 IP를 사용한다.
-
-※ 현재 설계는 단일 Master 구조이므로 완전한 고가용성(HA) 구성은 아니다.
+※ 위 구성도는 논리적인 네트워크 및 서비스 구조를 표현한 것이다. NAT Gateway는 Private Route Table의 기본 경로로 사용된다.
 
 ---
 
-## 3. Internet Gateway 및 Route Table 설계
+## 3. Internet Gateway 및 NAT Gateway
 
 ### 3.1 Internet Gateway
 
-| 항목 | 설정값 |
+Internet Gateway는 VPC와 인터넷 간 통신을 지원한다.
+
+Public Subnet의 Route Table에 기본 경로를 설정하여 인터넷 연결을 제공한다.
+
+### 3.2 NAT Gateway
+
+NAT Gateway는 Public Subnet A에 배치한다.
+
+Private Subnet의 Master 및 Worker EC2는 NAT Gateway를 통해 외부 인터넷으로 아웃바운드 통신을 수행한다.
+
+주요 사용 목적은 다음과 같다.
+
+- 운영체제 패키지 설치 및 업데이트
+- Kubernetes 관련 패키지 다운로드
+- 컨테이너 이미지 다운로드
+- AWS 서비스와의 HTTPS 통신
+
+NAT Gateway는 Private EC2로 향하는 외부의 직접적인 인바운드 접속을 허용하는 수단이 아니다.
+
+---
+
+## 4. Route Table 설계
+
+### 4.1 Public Route Table
+
+| Destination | Target |
 |---|---|
-| IGW 이름 | `accordion-igw` |
-| 연결 VPC | `accordion-vpc` |
-| 용도 | EC2 인터넷 통신 |
+| 10.0.0.0/16 | local |
+| 0.0.0.0/0 | Internet Gateway |
 
-Internet Gateway는 VPC의 인터넷 연결을 담당한다.
+연결 대상: Public Subnet A
 
-### 3.2 Route Table
+### 4.2 Private Route Table
 
-| 항목 | 설정값 |
+| Destination | Target |
 |---|---|
-| Route Table 이름 | `accordion-public-rt` |
-| 연결 VPC | `accordion-vpc` |
-| 연결 서브넷 | Public Subnet A, Public Subnet C |
+| 10.0.0.0/16 | local |
+| 0.0.0.0/0 | NAT Gateway |
 
-**라우팅 규칙**
+연결 대상: Private Subnet A, Private Subnet C
 
-| Destination | Target | 용도 |
+Master와 Worker 간 통신은 VPC 내부 local 경로를 사용하며, 외부 인터넷 통신은 NAT Gateway를 경유한다.
+
+---
+
+## 5. Security Group 설계
+
+### 5.1 설계 원칙
+
+- 최소 권한 원칙 적용
+- 불필요한 인바운드 포트 차단
+- Master와 Worker 간 필요한 통신만 허용
+- 외부 인터넷에 SSH 포트 직접 공개하지 않음
+- Kubernetes 및 Calico 통신 방식에 따라 필요한 규칙 적용
+
+### 5.2 주요 통신 포트
+
+| 프로토콜 | 포트 | 용도 |
 |---|---|---|
-| `10.0.0.0/16` | local | VPC 내부 통신 |
-| `0.0.0.0/0` | Internet Gateway | 인터넷 통신 |
+| TCP | 6443 | Kubernetes API Server |
+| TCP | 10250 | Kubelet API |
+| UDP | 4789 | Calico VXLAN 사용 시 |
+| TCP | 443 | AWS 서비스 및 외부 HTTPS 통신 |
 
-**라우팅 동작**
+TCP 443은 주로 EC2의 아웃바운드 통신에 사용하며, 외부 인터넷에 인바운드로 개방하는 것을 의미하지 않는다.
 
-- Master와 Worker의 사설 IP 통신은 VPC 내부 `local` 경로를 사용한다.
-- 외부 인터넷으로 나가는 트래픽은 IGW를 사용한다.
-- Public Subnet A와 C는 동일한 Public Route Table을 사용한다.
-
----
-
-## 4. Security Group 설계
-
-### 4.1 Master Security Group
-
-**이름:** `accordion-master-sg`
-
-| 프로토콜 | 포트 | Source | 용도 |
-|---|---|---|---|
-| TCP | 22 | 관리자 공인 IP `/32` | SSH 접속 |
-| TCP | 6443 | `accordion-worker-sg` | Worker → Kubernetes API |
-| TCP | 6443 | 관리자 공인 IP `/32` (필요 시) | 외부 kubectl 관리 |
-| TCP | 10250 | `accordion-worker-sg` (필요 시) | Kubelet API 통신 |
-
-### 4.2 Worker Security Group
-
-**이름:** `accordion-worker-sg`
-
-| 프로토콜 | 포트 | Source | 용도 |
-|---|---|---|---|
-| TCP | 22 | 관리자 공인 IP `/32` | SSH 접속 |
-| TCP | 10250 | `accordion-master-sg` | Master → Worker Kubelet |
-| TCP | 30080 | 관리자/테스트 공인 IP `/32` | 웹서비스 NodePort |
-| UDP | 4789 | Master/Worker SG | Calico VXLAN 사용 시 |
-
-### 4.3 추가 검토 사항
-
-다음 사항은 A3의 Kubernetes 및 Calico 설정 방식에 따라 최종 확정한다.
-
-- Calico VXLAN 또는 BGP 통신 방식
-- 노드 간 Pod 트래픽에 필요한 포트
-- Kubernetes API 및 Kubelet 접근 방향
-- Cluster Autoscaler 및 ASG 연동 시 필요한 네트워크 설정
-- B2의 NodePort 최종 번호
-
-**보안 정책**
-
-- SSH는 관리자 IP에서만 허용한다.
-- Kubernetes 내부 통신은 가능한 한 Security Group 참조 방식으로 설정한다.
-- 불필요한 인바운드 포트는 개방하지 않는다.
-- Master/Worker의 아웃바운드는 초기 구축에 필요한 인터넷 접근을 허용하고, 이후 제한 가능성을 검토한다.
-
-※ 위 SG 규칙은 초기 설계안이며, Kubernetes와 Calico 구성 방식에 따라 추가 규칙이 필요할 수 있다.
+실제 Security Group의 Source와 Destination, Calico 관련 포트는 Kubernetes 담당자(A3)와 협의하여 확정한다.
 
 ---
 
-## 5. Kubernetes 네트워크 설계
+## 6. EC2 구성 및 관리
 
-| 항목 | CIDR / 설정값 |
+### 6.1 EC2 구성
+
+| 구분 | Master EC2 | Worker EC2 |
+|---|---|---|
+| 인스턴스 수 | 1대 | 1대 |
+| Subnet | Private Subnet A | Private Subnet C |
+| 가용 영역 | ap-northeast-2a | ap-northeast-2c |
+| Public IP | 없음 | 없음 |
+| 역할 | Kubernetes Control Plane | 애플리케이션 및 모니터링 워크로드 |
+
+EC2 인스턴스 타입, 운영체제 및 스토리지 용량은 Terraform 담당자(A2)와 Kubernetes 담당자(A3)가 협의하여 확정한다.
+
+### 6.2 EC2 관리 접속
+
+Private EC2의 관리 접속 방법으로 AWS Systems Manager Session Manager 사용을 우선 검토한다.
+
+SSM 사용 시 필요한 IAM Role, SSM Agent 및 네트워크 연결 상태를 확인한다.
+
+---
+
+## 7. Kubernetes 및 HPA 구성
+
+### 7.1 Kubernetes 클러스터
+
+- Master Node: 1대
+- Worker Node: 1대
+- 클러스터 구축: kubeadm
+- 컨테이너 런타임: containerd
+- CNI: Calico
+
+Pod CIDR, Service CIDR 및 Calico 통신 방식은 Kubernetes 담당자(A3)가 확정한다.
+
+### 7.2 웹서비스 리소스 설정
+
+```yaml
+resources:
+  requests:
+    cpu: "100m"
+    memory: "64Mi"
+  limits:
+    cpu: "500m"
+    memory: "128Mi"
+```
+
+### 7.3 HPA 설정
+
+| 항목 | 설정 |
 |---|---|
-| AWS VPC CIDR | `10.0.0.0/16` |
-| Public Subnet A | `10.0.1.0/24` |
-| Public Subnet C | `10.0.2.0/24` |
-| Kubernetes Pod CIDR | `172.20.0.0/16` |
-| Kubernetes Service CIDR | `10.96.0.0/12` |
-| CNI | Calico |
-| Kubernetes API Server | TCP 6443 |
+| CPU 목표 사용률 | 50% |
+| 최소 Pod | 1개 |
+| 최대 Pod | 3개 |
+| 메트릭 수집 | Metrics Server |
+| 부하 테스트 | k6 |
 
-### 네트워크 구분
+CPU 사용률에 따라 웹서비스 Pod가 자동으로 확장 및 축소되도록 구성한다.
 
-- **VPC CIDR:** AWS EC2 및 AWS 리소스 간 통신에 사용
-- **Pod CIDR:** Kubernetes Pod 간 통신에 사용
-- **Service CIDR:** Kubernetes Service의 가상 IP에 사용
-
-서로 다른 네트워크 대역을 사용하여 주소 충돌을 방지한다.
+HPA의 CPU 사용률은 Pod의 CPU requests를 기준으로 계산한다.
 
 ---
 
-## 6. 담당자별 연동 사항
+## 8. 모니터링 구성
 
-### A2 — Terraform 담당
+Prometheus와 Grafana를 활용하여 Kubernetes 클러스터 및 웹서비스 상태를 모니터링한다.
 
-Terraform으로 다음 리소스를 생성한다.
+### 주요 모니터링 항목
 
-- VPC: `accordion-vpc`
-- Public Subnet A: `accordion-public-a`
-- Public Subnet C: `accordion-public-c`
-- Internet Gateway: `accordion-igw`
-- Public Route Table: `accordion-public-rt`
-- Master/Worker Security Group
-- Ubuntu Server 24.04 LTS 기반 EC2
-- Worker Launch Template 및 Auto Scaling Group
+- CPU 사용률
+- 메모리 사용량
+- Pod 개수
+- HPA 상태
+- 부하 테스트 전후 변화
 
-**확인 사항**
+Prometheus는 메트릭 수집을 담당하고 Grafana는 대시보드를 통해 수집된 정보를 시각화한다.
 
-- Master는 Subnet A에 배치
-- Worker ASG는 Subnet C에 연결
-- EC2 Public IP 할당 확인
-- Worker 추가 시 동일한 SG 적용
-- Terraform 변수 및 리소스 이름 통일
-
-### A3 — Linux / Kubernetes 담당
-
-- Ubuntu Server 24.04 LTS 기준 설치 스크립트 작성
-- Master에서 `kubeadm init` 실행
-- Worker에서 `kubeadm join` 실행
-- Calico CNI 설치 및 네트워크 모드 결정
-- Worker 자동 생성 시 클러스터 자동 참여 구성
-
-**A1 확인 필요 사항**
-
-- Master/Worker 통신 포트
-- Calico 통신 방식
-- 신규 Worker 자동 연결에 필요한 네트워크 조건
-
-### B2 — Kubernetes 서비스 담당
-
-- Deployment 및 Service 구성
-- NodePort 서비스 포트 확정
-- HPA 설정
-
-**A1 확인 필요 사항**
-
-- 외부에서 접근할 NodePort 번호
-- 서비스 접근 대상 노드 및 접속 방식
+HPA에 필요한 CPU 메트릭은 Metrics Server에서 제공한다.
 
 ---
 
-## 7. 네트워크 검증 계획
+## 9. 네트워크 검증 계획
 
-Terraform 및 Kubernetes 구축이 완료되면 다음 항목을 검증한다.
+| 번호 | 검증 항목 | 기대 결과 |
+|---|---|---|
+| 1 | VPC CIDR 확인 | 10.0.0.0/16 |
+| 2 | Public Subnet 확인 | 10.0.1.0/24 |
+| 3 | Private Subnet A 확인 | 10.0.101.0/24 |
+| 4 | Private Subnet C 확인 | 10.0.102.0/24 |
+| 5 | Internet Gateway 연결 | 정상 연결 |
+| 6 | NAT Gateway 상태 | Available |
+| 7 | Public Route Table | 기본 경로가 IGW |
+| 8 | Private Route Table | 기본 경로가 NAT |
+| 9 | Master EC2 배치 | Private Subnet A |
+| 10 | Worker EC2 배치 | Private Subnet C |
+| 11 | Private EC2 인터넷 통신 | 정상 |
+| 12 | Master-Worker 통신 | 정상 |
+| 13 | Kubernetes Node 상태 | Ready |
+| 14 | Security Group 설정 | 필요한 포트만 허용 |
+| 15 | SSM 관리 접속 | 구성 완료 후 접속 정상 |
 
-| 번호 | 검증 항목 | 확인 내용 | 예상 결과 |
-|---|---|---|---|
-| 1 | VPC 생성 | CIDR 및 이름 확인 | `10.0.0.0/16` |
-| 2 | Subnet A 생성 | AZ, CIDR 확인 | `2a`, `10.0.1.0/24` |
-| 3 | Subnet C 생성 | AZ, CIDR 확인 | `2c`, `10.0.2.0/24` |
-| 4 | IGW 연결 | VPC 연결 상태 확인 | 정상 연결 |
-| 5 | Route Table | 두 서브넷의 연결 및 인터넷 경로 확인 | 정상 설정 |
-| 6 | SSH 접속 | 허용된 관리자 IP에서 접속 | 성공 |
-| 7 | 내부 통신 | Master↔Worker 사설 IP 연결 확인 | 정상 |
-| 8 | Kubernetes API | Worker→Master TCP 6443 확인 | 성공 |
-| 9 | 인터넷 통신 | EC2 외부 HTTPS 연결 | 성공 |
-| 10 | Pod 통신 | 서로 다른 노드의 Pod 간 통신 | 성공 |
-| 11 | NodePort | 외부에서 서비스 접속 | 정상 응답 |
-| 12 | ASG 확장 | 신규 Worker의 서브넷 및 SG 확인 | 정상 적용 |
-| 13 | 보안 정책 | 허용되지 않은 IP의 접근 확인 | 차단 |
+### 주요 테스트 명령어
 
-### 테스트 명령어 예시
+**인터넷 통신 확인**
 
-**Kubernetes API 연결**
+```bash
+curl -I https://aws.amazon.com
+```
+
+**Kubernetes API 연결 확인**
 
 ```bash
 nc -vz <MASTER_PRIVATE_IP> 6443
 ```
 
-**인터넷 연결**
-
-```bash
-curl -I https://www.google.com
-```
-
-**클러스터 노드 확인**
+**Kubernetes Node 확인**
 
 ```bash
 kubectl get nodes -o wide
 ```
 
-**Pod 배치 확인**
+**Pod 확인**
 
 ```bash
 kubectl get pods -A -o wide
 ```
 
-**NodePort 접속**
-
-```bash
-curl http://<WORKER_PUBLIC_IP>:30080
-```
-
-※ NodePort 30080은 임시 설정값이며 B2 담당자와 협의 후 확정한다.
+※ 위 명령어는 검증 계획이며, 실제 테스트 결과는 인프라 구축 후 기록한다.
 
 ---
 
-## 8. 최종 확인 및 미결정 사항
+## 10. 담당 업무 및 협업
 
-### 확정된 사항
+| 담당 | 주요 업무 |
+|---|---|
+| A1 | AWS 네트워크 설계 및 검증 |
+| A2 | Terraform 기반 AWS 인프라 구축 |
+| A3 | Kubernetes 클러스터 구축 |
+| B1 | 웹서비스 개발 및 Docker/ECR 배포 |
+| B2 | HPA 구성 및 k6 부하 테스트 |
+| B3 | Prometheus/Grafana 모니터링 구축 |
 
-- AWS 서울 리전 사용
-- VPC `10.0.0.0/16`
-- Public Subnet A → `ap-northeast-2a`
-- Public Subnet C → `ap-northeast-2c`
-- Master는 Subnet A에 배치
-- Worker ASG는 Subnet C에 배치
-- Ubuntu Server 24.04 LTS 사용
-- Terraform 기반 네트워크 구축
-- Kubernetes Pod CIDR `172.20.0.0/16`
-- Kubernetes Service CIDR `10.96.0.0/12`
+### A1 담당 업무
 
-### 추가 협의 사항
-
-- [ ] A2: Terraform 네트워크 구성값 반영 확인
-- [ ] A3: Calico 통신 모드 및 SG 포트 확정
-- [ ] A3: Worker 자동 참여 방식 확정
-- [ ] B2: NodePort 번호 확정
-- [ ] A1: AWS 네트워크 구축 결과 검증
-- [ ] A1: Kubernetes 통신 및 보안 검증
-- [ ] A1: 최종 테스트 결과 문서화
+1. VPC 및 Subnet 네트워크 설계
+2. CIDR 및 가용 영역 구성
+3. Internet Gateway와 NAT Gateway 설계
+4. Route Table 설계
+5. Security Group 정책 검토
+6. Private EC2 관리 접속 검토
+7. Terraform 구축 결과 검증
+8. 네트워크 연결 테스트 및 결과 문서화
 
 ---
 
-## 9. 담당 범위 정리
+## 11. 미확정 사항
 
-**A1 — AWS 네트워크 설계 및 검증**
+다음 항목은 각 담당자가 협의하여 결정한 후 문서에 반영한다.
 
-1. VPC, Subnet, CIDR 및 AZ 설계
-2. Internet Gateway 및 Route Table 설계
-3. Security Group 통신 정책 수립
-4. Terraform 네트워크 구현 결과 확인
-5. Master/Worker 및 Kubernetes 네트워크 연결 검증
-6. 네트워크 테스트 결과 및 최종 문서 정리
+- EC2 인스턴스 타입 및 디스크 용량
+- 운영체제 및 AMI
+- Kubernetes Pod CIDR / Service CIDR
+- Calico 통신 방식 및 세부 Security Group 규칙
+- 웹서비스와 Grafana의 발표용 접속 방식
+- 모니터링 워크로드의 실제 리소스 요구량
 
-본 문서는 초기 네트워크 설계서이며, 실제 Terraform 및 Kubernetes 구축 과정에서 확인된 사항을 반영하여 최종본으로 갱신한다.
+---
+
+## 12. 결론
+
+본 프로젝트는 Terraform을 활용하여 AWS VPC, Subnet, Internet Gateway, NAT Gateway, Route Table, Security Group 및 EC2 인프라를 구성한다.
+
+Master와 Worker EC2는 Private Subnet에 배치하여 외부 직접 접근을 제한하고, NAT Gateway를 통해 필요한 아웃바운드 통신을 제공한다.
+
+구축된 AWS 인프라 위에 Kubernetes 클러스터를 구성하고, HPA를 이용한 웹서비스 Pod 자동 확장 및 Prometheus/Grafana 기반 통합 모니터링을 구현한다.
+
+A1 담당자는 AWS 네트워크 설계와 Terraform 구축 결과 검증을 수행하며, 실제 테스트 결과를 최종 문서에 반영한다.
