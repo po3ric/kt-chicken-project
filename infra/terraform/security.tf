@@ -30,17 +30,26 @@ resource "aws_security_group" "master" {
     description = "Calico Typha"
     from_port   = 5473
     to_port     = 5473
-    protocol = "tcp"
+    protocol    = "tcp"
     cidr_blocks = ["10.0.102.0/24"] # Worker Subnet D CIDR
   }
 
-    # worker EC2에서 Master EC2로 접근 허용 : Calico BGP
+  # worker EC2에서 Master EC2로 접근 허용 : Calico BGP
   ingress {
     description = "Calico BGP"
-    from_port = 179
-    to_port = 179
-    protocol = "tcp"
+    from_port   = 179
+    to_port     = 179
+    protocol    = "tcp"
     cidr_blocks = ["10.0.102.0/24"] # Worker Subnet D CIDR
+  }
+
+  # worker EC2에서 Master EC2로 접근 허용 : kubelet API
+  ingress {
+    description = "kubelet API"
+    from_port   = 10250
+    to_port     = 10250
+    protocol    = "tcp"
+    cidr_blocks = [var.private_sub_d_cidr] #[aws_security_group.worker.id]
   }
 
   # Master EC2의 전체 아웃바운드 트래픽 허용
@@ -87,9 +96,9 @@ resource "aws_security_group" "worker" {
   # Master EC2에서 Worker EC2로 접근 허용 : Calico BGP
   ingress {
     description = "Calico BGP"
-    from_port = 179
-    to_port = 179
-    protocol = "tcp"
+    from_port   = 179
+    to_port     = 179
+    protocol    = "tcp"
     cidr_blocks = ["10.0.101.0/24"] # Master Subnet B CIDR
   }
 
