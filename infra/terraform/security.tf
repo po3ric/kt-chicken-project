@@ -25,6 +25,23 @@ resource "aws_security_group" "master" {
     protocol    = "udp"
     cidr_blocks = [var.private_sub_d_cidr] #[aws_security_group.worker.id]
   }
+  # worker EC2에서 Master EC2로 접근 허용 : Calico Typha
+  ingress {
+    description = "Calico Typha"
+    from_port   = 5473
+    to_port     = 5473
+    protocol = "tcp"
+    cidr_blocks = ["10.0.102.0/24"] # Worker Subnet D CIDR
+  }
+
+    # worker EC2에서 Master EC2로 접근 허용 : Calico BGP
+  ingress {
+    description = "Calico BGP"
+    from_port = 179
+    to_port = 179
+    protocol = "tcp"
+    cidr_blocks = ["10.0.102.0/24"] # Worker Subnet D CIDR
+  }
 
   # Master EC2의 전체 아웃바운드 트래픽 허용
   egress {
@@ -39,6 +56,7 @@ resource "aws_security_group" "master" {
     Name = "accordion-master-sg"
   }
 }
+
 
 # ===== Worker Security Group  =====
 # Worker EC2에 적용
@@ -64,6 +82,15 @@ resource "aws_security_group" "worker" {
     to_port     = 4789
     protocol    = "udp"
     cidr_blocks = [var.private_sub_b_cidr] #[aws_security_group.master.id]
+  }
+
+  # Master EC2에서 Worker EC2로 접근 허용 : Calico BGP
+  ingress {
+    description = "Calico BGP"
+    from_port = 179
+    to_port = 179
+    protocol = "tcp"
+    cidr_blocks = ["10.0.101.0/24"] # Master Subnet B CIDR
   }
 
   # Worker EC2의 전체 아웃바운드 트래픽 허용
