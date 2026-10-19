@@ -12,8 +12,6 @@ spec:
       labels:
         app: chicken-app
     spec:
-      imagePullSecrets:
-        - name: ecr-pull-secret
       containers:
       - name: chicken-app
         image: 916207038064.dkr.ecr.ap-northeast-2.amazonaws.com/accordion-team:v1.3
