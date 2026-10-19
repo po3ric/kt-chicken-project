@@ -1,34 +1,7 @@
 # ===== EC2 Compute =====
-# data 블럭은 이미 있는거 조회 / resource 블럭은 새로 생성하는거
-
-# ===== Ubuntu 24.04 LTS AMI 조회 =====
-data "aws_ami" "ubuntu" {
-  most_recent = true
-  owners      = ["099720109477"] # Canonical
-
-  # 이미지 검색
-  filter {
-    name   = "name"
-    values = ["ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*"]
-  }
-
-  # CPU 아키텍처 종류 제한
-  filter {
-    name   = "architecture"
-    values = ["x86_64"]
-  }
-
-  # H/W 가상화 방식 지정
-  filter {
-    name   = "virtualization-type"
-    values = ["hvm"]
-  }
-}
-
-
 # ===== Master EC2 생성 =====
 resource "aws_instance" "master" {
-  ami           = data.aws_ami.ubuntu.id
+  ami           = var.ubuntu_ami_id
   instance_type = var.master_instance_type
 
   subnet_id = aws_subnet.private_b.id
@@ -48,7 +21,7 @@ resource "aws_instance" "master" {
 
 # ===== Worker EC2 생성 =====
 resource "aws_instance" "worker" {
-  ami           = data.aws_ami.ubuntu.id
+  ami           = var.ubuntu_ami_id
   instance_type = var.worker_instance_type
 
   subnet_id = aws_subnet.private_d.id

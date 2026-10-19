@@ -114,6 +114,11 @@ variable "master_instance_type" {
   type        = string
 }
 
+variable "ubuntu_ami_id" {
+  description = "Ubuntu AMI ID"
+  type        = string
+}
+
 # Kubernetes Worker EC2 사양
 variable "worker_instance_type" {
   description = "Kubernetes Worker instance type"
@@ -125,5 +130,5 @@ variable "worker_instance_type" {
 variable "enable_nat_gateway" {
   description = "Enable NAT Gateway"
   type        = bool
-  default     = false # true 시 생성, false 시 삭제
+  default     = true # true 시 생성, false 시 삭제
 }
