@@ -14,6 +14,18 @@ resource "aws_instance" "master" {
 
   depends_on = [aws_iam_role_policy_attachment.ssm] # SSM 정책 연결 후 EC2 설정 적용
 
+  # 루트 EBS 30GiB로 증가 (기존 8GiB)
+  root_block_device {
+    volume_size = 30
+    volume_type = "gp3"
+  }
+
+  # 삭제 방지
+  lifecycle {
+    prevent_destroy = true
+  }
+  disable_api_termination = true # AWS 콘솔에서도 삭제 방지
+
   tags = {
     Name = "accordion-master"
   }
@@ -33,6 +45,18 @@ resource "aws_instance" "worker" {
   iam_instance_profile = aws_iam_instance_profile.ec2.name # IAM Role 연결
 
   depends_on = [aws_iam_role_policy_attachment.ssm] # SSM 정책 연결 후 EC2 설정 적용
+
+  # 루트 EBS 30GiB로 증가 (기존 8GiB)
+  root_block_device {
+    volume_size = 30
+    volume_type = "gp3"
+  }
+
+  # 삭제 방지
+  lifecycle {
+    prevent_destroy = true
+  }
+  disable_api_termination = true # AWS 콘솔에서도 삭제 방지
 
   tags = {
     Name = "accordion-worker"

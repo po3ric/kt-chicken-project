@@ -31,7 +31,7 @@ resource "aws_security_group" "master" {
     from_port   = 5473
     to_port     = 5473
     protocol    = "tcp"
-    cidr_blocks = ["10.0.102.0/24"] # Worker Subnet D CIDR
+    cidr_blocks = [var.private_sub_d_cidr] # Worker Subnet D CIDR
   }
 
   # worker EC2에서 Master EC2로 접근 허용 : Calico BGP
@@ -40,7 +40,7 @@ resource "aws_security_group" "master" {
     from_port   = 179
     to_port     = 179
     protocol    = "tcp"
-    cidr_blocks = ["10.0.102.0/24"] # Worker Subnet D CIDR
+    cidr_blocks = [var.private_sub_d_cidr] # Worker Subnet D CIDR
   }
 
   # worker EC2에서 Master EC2로 접근 허용 : kubelet API
@@ -99,7 +99,16 @@ resource "aws_security_group" "worker" {
     from_port   = 179
     to_port     = 179
     protocol    = "tcp"
-    cidr_blocks = ["10.0.101.0/24"] # Master Subnet B CIDR
+    cidr_blocks = [var.private_sub_b_cidr] # Master Subnet B CIDR
+  }
+
+  # 노도포트 개방
+  ingress {
+    description = "chicken app nodeport"
+    from_port   = 30080
+    to_port     = 30080
+    protocol    = "tcp"
+    cidr_blocks = ["${aws_instance.master.private_ip}/32"]
   }
 
   # Worker EC2의 전체 아웃바운드 트래픽 허용
