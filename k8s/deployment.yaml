@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: chicken-app
-        image: 916207038064.dkr.ecr.ap-northeast-2.amazonaws.com/accordion-team:v1.3
+        image: 916207038064.dkr.ecr.ap-northeast-2.amazonaws.com/accordion-team:v1.4
         ports:
         - containerPort: 8080
         resources:
