@@ -1,0 +1,60 @@
+{
+  "kind": "Panel",
+  "spec": {
+    "id": 5,
+    "title": "웹앱 가용 Pod 수",
+    "description": "chicken-app Deployment에서 가용 상태인 Pod 수를 표시한다.",
+    "links": [],
+    "data": {
+      "kind": "QueryGroup",
+      "spec": {
+        "queries": [
+          {
+            "kind": "PanelQuery",
+            "spec": {
+              "refId": "A",
+              "hidden": false,
+              "query": {
+                "kind": "DataQuery",
+                "group": "prometheus",
+                "version": "v0",
+                "datasource": { "name": "prometheus" },
+                "spec": {
+                  "editorMode": "code",
+                  "expr": "kube_deployment_status_replicas_available{namespace=\"chicken-app\", deployment=\"chicken-app\"}",
+                  "legendFormat": "가용 Pod",
+                  "range": true
+                }
+              }
+            }
+          }
+        ],
+        "transformations": [],
+        "queryOptions": {}
+      }
+    },
+    "vizConfig": {
+      "kind": "VizConfig",
+      "group": "timeseries",
+      "version": "13.2.4",
+      "spec": {
+        "options": {
+          "legend": {
+            "displayMode": "list",
+            "placement": "bottom",
+            "showLegend": true
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "decimals": 0,
+            "min": 0,
+            "max": 4
+          },
+          "overrides": []
+        }
+      }
+    }
+  }
+}

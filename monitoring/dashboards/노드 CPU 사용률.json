@@ -1,0 +1,60 @@
+{
+  "kind": "Panel",
+  "spec": {
+    "id": 1,
+    "title": "노드 CPU 사용률",
+    "description": "Node Exporter가 수집한 idle 시간을 기준으로 노드별 CPU 사용률을 계산한다.",
+    "links": [],
+    "data": {
+      "kind": "QueryGroup",
+      "spec": {
+        "queries": [
+          {
+            "kind": "PanelQuery",
+            "spec": {
+              "refId": "A",
+              "hidden": false,
+              "query": {
+                "kind": "DataQuery",
+                "group": "prometheus",
+                "version": "v0",
+                "datasource": { "name": "prometheus" },
+                "spec": {
+                  "editorMode": "code",
+                  "expr": "100 * (1 - avg by (instance) (rate(node_cpu_seconds_total{job=\"node-exporter\", mode=\"idle\"}[5m])))",
+                  "legendFormat": "{{instance}}",
+                  "range": true
+                }
+              }
+            }
+          }
+        ],
+        "transformations": [],
+        "queryOptions": {}
+      }
+    },
+    "vizConfig": {
+      "kind": "VizConfig",
+      "group": "timeseries",
+      "version": "13.2.4",
+      "spec": {
+        "options": {
+          "legend": {
+            "displayMode": "list",
+            "placement": "bottom",
+            "showLegend": true
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "decimals": 1,
+            "min": 0,
+            "max": 100
+          },
+          "overrides": []
+        }
+      }
+    }
+  }
+}

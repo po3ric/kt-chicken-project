@@ -1,0 +1,59 @@
+{
+  "kind": "Panel",
+  "spec": {
+    "id": 3,
+    "title": "웹앱 Pod별 CPU 사용량",
+    "description": "chicken-app Pod별 컨테이너 CPU 사용량을 합산하여 millicores(mCPU)로 표시한다. 1000mCPU는 CPU 1코어에 해당한다.",
+    "links": [],
+    "data": {
+      "kind": "QueryGroup",
+      "spec": {
+        "queries": [
+          {
+            "kind": "PanelQuery",
+            "spec": {
+              "refId": "A",
+              "hidden": false,
+              "query": {
+                "kind": "DataQuery",
+                "group": "prometheus",
+                "version": "v0",
+                "datasource": { "name": "prometheus" },
+                "spec": {
+                  "editorMode": "code",
+                  "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"chicken-app\", pod=~\"chicken-app-.*\", container!=\"\", container!=\"POD\", image!=\"\"}[$__rate_interval])) * 1000",
+                  "legendFormat": "{{pod}}",
+                  "range": true
+                }
+              }
+            }
+          }
+        ],
+        "transformations": [],
+        "queryOptions": {}
+      }
+    },
+    "vizConfig": {
+      "kind": "VizConfig",
+      "group": "timeseries",
+      "version": "13.2.4",
+      "spec": {
+        "options": {
+          "legend": {
+            "displayMode": "list",
+            "placement": "bottom",
+            "showLegend": true
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "suffix:mCPU",
+            "decimals": 1,
+            "min": 0
+          },
+          "overrides": []
+        }
+      }
+    }
+  }
+}

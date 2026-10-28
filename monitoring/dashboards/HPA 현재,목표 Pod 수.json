@@ -1,0 +1,78 @@
+{
+  "kind": "Panel",
+  "spec": {
+    "id": 6,
+    "title": "HPA 현재/목표 Pod 수",
+    "description": "HPA의 현재 Pod 수와 목표 Pod 수를 비교한다.",
+    "links": [],
+    "data": {
+      "kind": "QueryGroup",
+      "spec": {
+        "queries": [
+          {
+            "kind": "PanelQuery",
+            "spec": {
+              "refId": "A",
+              "hidden": false,
+              "query": {
+                "kind": "DataQuery",
+                "group": "prometheus",
+                "version": "v0",
+                "datasource": { "name": "prometheus" },
+                "spec": {
+                  "editorMode": "code",
+                  "expr": "kube_horizontalpodautoscaler_status_current_replicas{namespace=\"chicken-app\", horizontalpodautoscaler=\"chicken-app\"}",
+                  "legendFormat": "현재 Pod 수",
+                  "range": true
+                }
+              }
+            }
+          },
+          {
+            "kind": "PanelQuery",
+            "spec": {
+              "refId": "B",
+              "hidden": false,
+              "query": {
+                "kind": "DataQuery",
+                "group": "prometheus",
+                "version": "v0",
+                "datasource": { "name": "prometheus" },
+                "spec": {
+                  "editorMode": "code",
+                  "expr": "kube_horizontalpodautoscaler_status_desired_replicas{namespace=\"chicken-app\", horizontalpodautoscaler=\"chicken-app\"}",
+                  "legendFormat": "목표 Pod 수",
+                  "range": true
+                }
+              }
+            }
+          }
+        ],
+        "transformations": [],
+        "queryOptions": {}
+      }
+    },
+    "vizConfig": {
+      "kind": "VizConfig",
+      "group": "timeseries",
+      "version": "13.2.4",
+      "spec": {
+        "options": {
+          "legend": {
+            "displayMode": "list",
+            "placement": "bottom",
+            "showLegend": true
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "decimals": 0,
+            "min": 0
+          },
+          "overrides": []
+        }
+      }
+    }
+  }
+}
