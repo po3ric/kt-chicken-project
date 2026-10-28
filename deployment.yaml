@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chicken-app
+  namespace: chicken-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: chicken-app
+  template:
+    metadata:
+      labels:
+        app: chicken-app
+    spec:
+      imagePullSecrets:
+        - name: ecr-secret
+      containers:
+        - name: chicken-app
+          image: 916207038064.dkr.ecr.ap-northeast-2.amazonaws.com/accordion-team:v1.4
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: LOAD_MAX_SECONDS
+              value: "15"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: "1"
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 8080
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
