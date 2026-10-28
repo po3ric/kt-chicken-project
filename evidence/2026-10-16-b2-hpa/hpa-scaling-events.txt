@@ -1,0 +1,2 @@
+14m         Normal    SuccessfulRescale              horizontalpodautoscaler/chicken-app   New size: 3; reason: cpu resource utilization (percentage of request) above target
+5m41s       Normal    SuccessfulRescale              horizontalpodautoscaler/chicken-app   New size: 1; reason: All metrics below target

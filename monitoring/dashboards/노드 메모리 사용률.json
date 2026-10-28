@@ -1,0 +1,60 @@
+{
+  "kind": "Panel",
+  "spec": {
+    "id": 2,
+    "title": "노드 메모리 사용률",
+    "description": "노드의 전체 메모리 대비 사용 가능한 메모리를 제외한 비율을 표시한다.",
+    "links": [],
+    "data": {
+      "kind": "QueryGroup",
+      "spec": {
+        "queries": [
+          {
+            "kind": "PanelQuery",
+            "spec": {
+              "refId": "A",
+              "hidden": false,
+              "query": {
+                "kind": "DataQuery",
+                "group": "prometheus",
+                "version": "v0",
+                "datasource": { "name": "prometheus" },
+                "spec": {
+                  "editorMode": "code",
+                  "expr": "100 * (1 - node_memory_MemAvailable_bytes{job=\"node-exporter\"} / node_memory_MemTotal_bytes{job=\"node-exporter\"})",
+                  "legendFormat": "{{instance}}",
+                  "range": true
+                }
+              }
+            }
+          }
+        ],
+        "transformations": [],
+        "queryOptions": {}
+      }
+    },
+    "vizConfig": {
+      "kind": "VizConfig",
+      "group": "timeseries",
+      "version": "13.2.4",
+      "spec": {
+        "options": {
+          "legend": {
+            "displayMode": "list",
+            "placement": "bottom",
+            "showLegend": true
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "decimals": 1,
+            "min": 0,
+            "max": 100
+          },
+          "overrides": []
+        }
+      }
+    }
+  }
+}
