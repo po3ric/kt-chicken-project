@@ -1,0 +1,2 @@
+NAME                           CPU(cores)   MEMORY(bytes)
+chicken-app-64949778f6-lcl6l   4m           32Mi

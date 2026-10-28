@@ -1,0 +1,30 @@
+LAST SEEN   TYPE      REASON                         OBJECT                                MESSAGE
+17m         Normal    Scheduled                      pod/chicken-app-64949778f6-lcl6l      Successfully assigned accordion-b1/chicken-app-64949778f6-lcl6l to k8s-worker
+17m         Normal    ScalingReplicaSet              deployment/chicken-app                Scaled up replica set chicken-app-64949778f6 from 0 to 1
+17m         Normal    SuccessfulCreate               replicaset/chicken-app-64949778f6     Created pod: chicken-app-64949778f6-lcl6l
+17m         Normal    Pulling                        pod/chicken-app-64949778f6-lcl6l      Pulling image "916207038064.dkr.ecr.ap-northeast-2.amazonaws.com/accordion-team:v1.3"
+17m         Normal    Started                        pod/chicken-app-64949778f6-lcl6l      Container started
+17m         Normal    Created                        pod/chicken-app-64949778f6-lcl6l      Container created
+17m         Normal    Pulled                         pod/chicken-app-64949778f6-lcl6l      Successfully pulled image "916207038064.dkr.ecr.ap-northeast-2.amazonaws.com/accordion-team:v1.3" in 2.78s (2.78s including waiting). Image size: 44892713 bytes.
+17m         Warning   FailedGetResourceMetric        horizontalpodautoscaler/chicken-app   failed to get cpu utilization: unable to get metrics for resource cpu: no metrics returned from resource metrics API
+17m         Warning   FailedComputeMetricsReplicas   horizontalpodautoscaler/chicken-app   invalid metrics (1 invalid out of 1), first error is: failed to get cpu resource metric value: failed to get cpu utilization: unable to get metrics for resource cpu: no metrics returned from resource metrics API
+17m         Warning   FailedGetResourceMetric        horizontalpodautoscaler/chicken-app   failed to get cpu utilization: did not receive metrics for targeted pods (pods might be unready)
+17m         Warning   FailedComputeMetricsReplicas   horizontalpodautoscaler/chicken-app   invalid metrics (1 invalid out of 1), first error is: failed to get cpu resource metric value: failed to get cpu utilization: did not receive metrics for targeted pods (pods might be unready)
+14m         Normal    SuccessfulCreate               replicaset/chicken-app-64949778f6     Created pod: chicken-app-64949778f6-k67h5
+14m         Normal    ScalingReplicaSet              deployment/chicken-app                Scaled up replica set chicken-app-64949778f6 from 1 to 3
+14m         Normal    Scheduled                      pod/chicken-app-64949778f6-k67h5      Successfully assigned accordion-b1/chicken-app-64949778f6-k67h5 to k8s-worker
+14m         Normal    Scheduled                      pod/chicken-app-64949778f6-dhnvm      Successfully assigned accordion-b1/chicken-app-64949778f6-dhnvm to k8s-worker
+14m         Normal    SuccessfulRescale              horizontalpodautoscaler/chicken-app   New size: 3; reason: cpu resource utilization (percentage of request) above target
+14m         Normal    SuccessfulCreate               replicaset/chicken-app-64949778f6     Created pod: chicken-app-64949778f6-dhnvm
+14m         Normal    Pulled                         pod/chicken-app-64949778f6-k67h5      Container image "916207038064.dkr.ecr.ap-northeast-2.amazonaws.com/accordion-team:v1.3" already present on machine and can be accessed by the pod
+14m         Normal    Created                        pod/chicken-app-64949778f6-dhnvm      Container created
+14m         Normal    Started                        pod/chicken-app-64949778f6-dhnvm      Container started
+14m         Normal    Pulled                         pod/chicken-app-64949778f6-dhnvm      Container image "916207038064.dkr.ecr.ap-northeast-2.amazonaws.com/accordion-team:v1.3" already present on machine and can be accessed by the pod
+14m         Normal    Started                        pod/chicken-app-64949778f6-k67h5      Container started
+14m         Normal    Created                        pod/chicken-app-64949778f6-k67h5      Container created
+5m41s       Normal    Killing                        pod/chicken-app-64949778f6-dhnvm      Stopping container chicken-app
+5m41s       Normal    SuccessfulDelete               replicaset/chicken-app-64949778f6     Deleted pod: chicken-app-64949778f6-dhnvm
+5m41s       Normal    SuccessfulDelete               replicaset/chicken-app-64949778f6     Deleted pod: chicken-app-64949778f6-k67h5
+5m41s       Normal    Killing                        pod/chicken-app-64949778f6-k67h5      Stopping container chicken-app
+5m41s       Normal    SuccessfulRescale              horizontalpodautoscaler/chicken-app   New size: 1; reason: All metrics below target
+5m41s       Normal    ScalingReplicaSet              deployment/chicken-app                Scaled down replica set chicken-app-64949778f6 from 3 to 1
