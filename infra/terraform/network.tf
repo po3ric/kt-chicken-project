@@ -10,7 +10,6 @@ resource "aws_vpc" "main" {
   }
 }
 
-
 # ===== Public Subnet B =====
 resource "aws_subnet" "public_b" {
   vpc_id                  = aws_vpc.main.id

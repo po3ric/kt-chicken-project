@@ -1,0 +1,38 @@
+# variables.tf에서 선언된 값들을 실제로 넣어주는 파일 << 이 파일 하나로 일관성 유지 가능
+
+# ===== AWS 기본 설정 =====
+aws_region   = "ap-northeast-2"
+project_name = "accordion"
+
+
+# ===== VPC / Subnet =====
+vpc_cidr = "10.0.0.0/16"
+
+# VPC DNS 설정
+enable_dns_support   = true
+enable_dns_hostnames = true
+
+# public sub
+public_sub_b_cidr = "10.0.1.0/24"
+
+# private sub 
+private_sub_b_cidr = "10.0.101.0/24"
+private_sub_d_cidr = "10.0.102.0/24"
+
+# 기존에 사용하던 AZ
+availability_zone_b = "ap-northeast-2b"
+availability_zone_d = "ap-northeast-2d"
+
+# AZ b, d로 변경
+master_availability_zone = "ap-northeast-2b"
+worker_availability_zone = "ap-northeast-2d"
+
+# Public IP 자동 할당
+map_public_ip_on_launch = true
+
+# ===== EC2 사양 =====
+master_instance_type = "c7i-flex.large"
+worker_instance_type = "c7i-flex.large"
+
+# ===== EC2 AMI ID =====
+ubuntu_ami_id = "ami-0e1eeb87102d64f40"
