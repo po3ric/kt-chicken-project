@@ -1,0 +1,43 @@
+# ACCORDION B2 — Kubernetes 1.36 / descheduler chart 0.36.0
+# Safety-first: no scheduled runs and no real evictions until validated.
+kind: CronJob
+schedule: "*/5 * * * *"
+suspend: false
+
+cmdOptions:
+  v: 4
+  dry-run: false
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 96Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+deschedulerPolicyAPIVersion: "descheduler/v1alpha2"
+deschedulerPolicy:
+  maxNoOfPodsToEvictTotal: 1
+  maxNoOfPodsToEvictPerNamespace: 1
+  maxNoOfPodsToEvictPerNode: 1
+  profiles:
+    - name: accordion-b2-rebalance
+      pluginConfig:
+        - name: DefaultEvictor
+          args:
+            nodeFit: true
+        - name: RemovePodsViolatingTopologySpreadConstraint
+          args:
+            constraints:
+              - ScheduleAnyway
+            namespaces:
+              include:
+                - chicken-app
+            labelSelector:
+              matchLabels:
+                app: chicken-app
+      plugins:
+        balance:
+          enabled:
+            - RemovePodsViolatingTopologySpreadConstraint

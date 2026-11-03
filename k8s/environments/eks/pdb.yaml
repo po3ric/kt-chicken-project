@@ -1,0 +1,13 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+
+metadata:
+  name: chicken-app-pdb
+  namespace: chicken-app
+
+spec:
+  minAvailable: 1
+
+  selector:
+    matchLabels:
+      app: chicken-app
